@@ -1,4 +1,4 @@
 kiteconnect==5.2.1
 python-dotenv==1.0.1
 pandas
-pandas_ta
+pandas-ta-classic
