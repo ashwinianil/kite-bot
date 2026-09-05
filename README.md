@@ -35,41 +35,60 @@
 
 ## Data pipeline (hourly candles + Supertrend + RSI)
 
+Two wrapper scripts run the whole pipeline in one command each — use these
+day-to-day instead of running the individual scripts below by hand.
+
+**One-time setup, and again every March/September** (Nifty rebalance months):
+```
+./scripts/refresh_constituents.sh
+```
+Fetches the current Nifty 50 list from NSE and resolves it to Kite instrument
+tokens. Falls back to a manual method (see
+`config/README_nifty50_constituents.md`) if NSE blocks the request.
+
+**Routine update** (run anytime, e.g. hourly during market hours 9:15am–3:30pm IST):
+```
+./scripts/update_hourly.sh
+```
+Pulls the latest hourly candles + Supertrend/RSI for all 51 instruments, then
+refreshes the Excel reference workbooks. Requires a valid access token for
+today (`python scripts/login.py` first if you haven't logged in yet today).
+
+<details>
+<summary>What each wrapper runs, if you want to run steps individually</summary>
+
+`refresh_constituents.sh` runs, in order:
 6. Fetch the current Nifty 50 constituent list from NSE:
    ```
    python scripts/update_nifty50_list_march_sept.py
    ```
-   Run this once now, and again every March/September after NSE announces
-   the semi-annual index rebalance. Falls back to a manual method
-   (see `config/README_nifty50_constituents.md`) if NSE blocks the request.
-
 7. Resolve those symbols into Kite instrument tokens:
    ```
    python scripts/get_instrument_tokens.py
    ```
-   Re-run this any time step 6 changes the symbol list.
 
+`update_hourly.sh` runs, in order:
 8. Fetch/update hourly candle data + Supertrend + RSI for all 51 instruments
    (Nifty 50 index + 50 stocks):
    ```
    python scripts/update_data.py
    ```
-   Safe to re-run anytime (e.g. hourly during market hours) — only appends
-   genuinely new candles, never duplicates. Data is saved to `data/csv/`
-   (one file per symbol) — this is the source of truth for strategy code.
-
+   Safe to re-run anytime — only appends genuinely new candles, never
+   duplicates. Data is saved to `data/csv/` (one file per symbol) — this is
+   the source of truth for strategy code.
 9. Generate Excel workbooks for human viewing (not the data source itself):
    ```
    python scripts/export_to_excel.py
    ```
    Creates one workbook per month under `data/excel/<year>/<year>-<month>.xlsx`,
    with one sheet per symbol.
+</details>
 
 ## Project structure
 
 ```
 config/         Shared client setup, Nifty 50 constituent list, instrument tokens
-scripts/        Standalone scripts: login, connection test, data pipeline
+scripts/        Standalone scripts + refresh_constituents.sh / update_hourly.sh wrappers
 strategy/       Strategy logic — indicators.py done, entry/exit rules TBD
 data/csv/       Source-of-truth hourly candle + indicator data (one CSV per symbol)
 data/excel/     Generated Excel workbooks for reference/viewing only
