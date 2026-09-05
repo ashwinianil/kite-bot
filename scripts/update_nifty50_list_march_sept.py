@@ -12,7 +12,7 @@ script sends a browser-like User-Agent and first hits the homepage to
 pick up required session cookies before requesting the actual CSV.
 
 Run:
-    python scripts/fetch_nifty50_list.py
+    python scripts/update_nifty50_list_march_sept.py
 
 Run this:
     - Once now, to populate the list for the first time.

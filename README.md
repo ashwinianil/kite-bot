@@ -37,7 +37,7 @@
 
 6. Fetch the current Nifty 50 constituent list from NSE:
    ```
-   python scripts/fetch_nifty50_list.py
+   python scripts/update_nifty50_list_march_sept.py
    ```
    Run this once now, and again every March/September after NSE announces
    the semi-annual index rebalance. Falls back to a manual method
