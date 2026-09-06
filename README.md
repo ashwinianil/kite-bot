@@ -50,7 +50,7 @@ tokens. Falls back to a manual method (see
 ```
 ./scripts/update_hourly.sh
 ```
-Pulls the latest hourly candles + Supertrend/RSI for all 51 instruments, then
+Pulls the latest hourly candles + Supertrend/RSI for all 52 instruments, then
 refreshes the Excel reference workbooks. Requires a valid access token for
 today (`python scripts/login.py` first if you haven't logged in yet today).
 
@@ -74,8 +74,8 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
    ```
 
 `update_hourly.sh` runs, in order:
-8. Fetch/update hourly candle data + Supertrend + RSI for all 51 instruments
-   (Nifty 50 index + 50 stocks):
+8. Fetch/update hourly candle data + Supertrend + RSI for all 52 instruments
+   (Nifty 50 index + Nifty Bank index + 50 stocks):
    ```
    python scripts/update_data.py
    ```
