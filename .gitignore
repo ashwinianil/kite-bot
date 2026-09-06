@@ -14,6 +14,7 @@ logs/*.csv
 # Generated market data — regenerable via update_data.py / export_to_excel.py,
 # not source, and will grow large over time. Not committed to git.
 data/csv/*.csv
+data/csv/archived/*.csv
 data/excel/**/*.xlsx
 
 # Generated instrument token cache — regenerate via get_instrument_tokens.py

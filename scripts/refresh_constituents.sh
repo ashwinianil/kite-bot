@@ -17,12 +17,16 @@ else
     exit 1
 fi
 
-echo "=== Step 1/2: Fetching current Nifty 50 constituent list from NSE ==="
+echo "=== Step 1/3: Fetching current Nifty 50 constituent list from NSE ==="
 python scripts/update_nifty50_list_march_sept.py
 
 echo ""
-echo "=== Step 2/2: Resolving symbols to Kite instrument tokens ==="
+echo "=== Step 2/3: Resolving symbols to Kite instrument tokens ==="
 python scripts/get_instrument_tokens.py
 
 echo ""
-echo "Done. Constituent list and instrument tokens are up to date."
+echo "=== Step 3/3: Archiving data for any symbols removed from the index ==="
+python scripts/cleanup_removed_constituents.py
+
+echo ""
+echo "Done. Constituent list, instrument tokens, and data folder are all up to date."

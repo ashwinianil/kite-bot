@@ -66,6 +66,12 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
    ```
    python scripts/get_instrument_tokens.py
    ```
+8. Archive data for any symbol that's dropped out of the index (moves the
+   CSV to `data/csv/archived/`, doesn't delete it — history is preserved,
+   it just stops being updated):
+   ```
+   python scripts/cleanup_removed_constituents.py
+   ```
 
 `update_hourly.sh` runs, in order:
 8. Fetch/update hourly candle data + Supertrend + RSI for all 51 instruments
