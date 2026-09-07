@@ -95,13 +95,34 @@ against known reference values, put-call parity, and round-trip IV recovery.
   human viewing only. Never read from; always regenerable.
 - `data/csv/archived/` — CSVs for stocks that dropped out of the Nifty 50
   index (moved here, not deleted, when `refresh_constituents.sh` runs).
-- `data/options_csv/<UNDERLYING>_<EXPIRY>.csv` — hourly snapshots of put
-  option prices + computed IV/delta, for the current month's expiry, within
-  ~15% below spot (the zone the strategy's strikes live in). Being
-  collected prospectively (no historical options data exists retroactively)
-  specifically so that in a few months there's real historical option price
-  data to backtest against, rather than only being able to forward-simulate
-  from "now". PE only — CE not currently collected (strategy is puts-only).
+- `data/options_csv/<UNDERLYING>_<EXPIRY>.csv` — hourly snapshots of BOTH
+  put and call option prices + computed IV/delta, for the current month's
+  expiry, within ~15% of spot on each side (puts below spot, calls above).
+  Being collected prospectively (no historical options data exists
+  retroactively) specifically so that in a few months there's real
+  historical option price data to backtest against, rather than only being
+  able to forward-simulate from "now".
+
+## Automated scheduling
+
+- `scripts/market_hours.py` checks NSE market hours (9:15am-3:30pm IST,
+  Mon-Fri) using explicit IST timezone conversion (zoneinfo, stdlib) —
+  NOT the machine's local system timezone, since the user's Mac may be set
+  to a different zone (e.g. Singapore, 2.5hrs ahead of IST). Tested against
+  9 scenarios including the SGT->IST conversion specifically.
+- `scripts/scheduled_update.sh` runs `update_hourly.sh` only when
+  `market_hours.py` says the market is open; designed to be called
+  frequently (e.g. every 15 min) by a scheduler — cheap no-op otherwise.
+- `scripts/com.kitebot.hourlyupdate.plist` is a macOS launchd job template
+  for running `scheduled_update.sh` automatically. User needs to edit the
+  path placeholder and `launchctl load` it — see README's "Automated
+  scheduling" section.
+- KNOWN LIMITATION (told to user clearly, not hidden): daily login is
+  still manual — Kite tokens expire daily and need browser-based 2FA login,
+  which isn't automated. The scheduled job will fail until
+  `scripts/login.py` is run that day. Also, the Mac must be awake/online
+  during market hours — launchd doesn't wake a sleeping Mac. A cloud VPS
+  is the real fix for full reliability, still pending (see Status below).
 
 ## Where things stand (update as work progresses)
 
@@ -112,9 +133,13 @@ against known reference values, put-call parity, and round-trip IV recovery.
 - [x] Signal engine (entry/exit state machine) — tested, 7 scenarios passing
 - [x] Options chain logic (expiry selection, strike interval detection,
       delta-based strike picking) — tested, 11 scenarios passing
-- [ ] Options price data collection (in progress)
+- [x] Options price data collection (puts + calls, hourly, prospective)
+- [x] Automated scheduling (macOS launchd) — daily login still manual,
+      Mac must be awake/online during market hours
 - [ ] Paper trading engine (state persistence + live quote-based simulated
       entries/exits + trade log) — partially designed, not yet complete
 - [ ] Review paper trading results with the user
 - [ ] Live order execution — DO NOT BUILD until paper trading is validated
       and the user explicitly asks to go live
+- [ ] Cloud VPS deployment (for true always-on reliability, beyond what a
+      laptop can offer) — not yet started

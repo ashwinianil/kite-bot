@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kitebot.hourlyupdate</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>REPLACE_WITH_FULL_PATH_TO_REPO/scripts/scheduled_update.sh</string>
+    </array>
+
+    <!-- Runs every 900 seconds (15 min). The script itself checks market
+         hours and no-ops outside 9:15am-3:30pm IST, so frequent checks are
+         cheap and just mean faster catch-up if one run is missed. -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_stderr.log</string>
+</dict>
+</plist>

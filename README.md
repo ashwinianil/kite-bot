@@ -100,27 +100,63 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
    with one sheet per symbol.
 </details>
 
+## Automated scheduling (macOS)
+
+To run the hourly update automatically instead of by hand:
+
+1. Edit `scripts/com.kitebot.hourlyupdate.plist` and replace
+   `REPLACE_WITH_FULL_PATH_TO_REPO` (appears 3 times) with the actual full
+   path to this repo on your machine (e.g. `/Users/ashwini/Downloads/repos/kite-bot`).
+
+2. Copy it into place and load it:
+   ```
+   cp scripts/com.kitebot.hourlyupdate.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.kitebot.hourlyupdate.plist
+   ```
+   This runs `scripts/scheduled_update.sh` every 15 minutes. That script
+   checks NSE market hours **in IST** (via `scripts/market_hours.py`,
+   timezone-safe regardless of what timezone your Mac itself is set to)
+   and only actually updates data when the market is open — outside those
+   hours it's a cheap no-op.
+
+3. To stop it: `launchctl unload ~/Library/LaunchAgents/com.kitebot.hourlyupdate.plist`
+
+4. Logs land in `logs/scheduled_update.log` (and `logs/launchd_stdout.log` /
+   `launchd_stderr.log` for launchd-level issues) — check these if data
+   doesn't seem to be updating.
+
+**Two important limitations to know about:**
+- **Daily login is still manual.** Kite access tokens expire every day and
+  require a browser-based login (password + 2FA) — this can't be automated
+  headlessly with the current setup. The scheduled job will fail every run
+  until you've run `python scripts/login.py` yourself that day.
+- **Your Mac must be awake and online** during market hours for this to
+  work — launchd doesn't wake a sleeping Mac by default. If you close the
+  lid or it sleeps, updates during that window are simply missed (though
+  harmlessly — the next successful run just picks up from where the data
+  left off). For genuine 24/7 reliability regardless of your laptop's
+  state, a cloud VPS is the real fix (still on the roadmap, see Status
+  below) — this local setup is a reasonable way to get started now.
+
 ## Project structure
 
 ```
-config/         Shared client setup, Nifty 50 constituent list, instrument tokens
-scripts/        Standalone scripts + refresh_constituents.sh / update_hourly.sh wrappers
-strategy/       Strategy logic — indicators.py done, entry/exit rules TBD
-data/csv/       Source-of-truth hourly candle + indicator data (one CSV per symbol)
-data/excel/     Generated Excel workbooks for reference/viewing only
-logs/           Trade logs, error logs
-.env            Your actual credentials (never commit this)
-.env.example    Template for .env
+config/            Shared client setup, Nifty 50 constituent list, instrument tokens
+scripts/           Standalone scripts + wrapper shell scripts (refresh_constituents.sh,
+                    update_hourly.sh, scheduled_update.sh) + launchd plist
+strategy/          Strategy logic: indicators, signal engine, options pricing/chain
+data/csv/          Source-of-truth hourly candle + indicator data (one CSV per symbol)
+data/csv/archived/ Data for stocks dropped from the Nifty 50 index (preserved, not deleted)
+data/options_csv/  Hourly options price snapshots (puts + calls) — committed to git,
+                    since this data is irreplaceable if lost (see AGENTS.md)
+data/excel/        Generated Excel workbooks for reference/viewing only
+logs/              Trade logs, scheduler logs, error logs
+.env               Your actual credentials (never commit this)
+.env.example       Template for .env
 ```
 
 ## Status
 
-- [x] Project skeleton
-- [x] Auth flow (daily login script)
-- [x] Data pipeline: Nifty 50 list, instrument tokens, hourly candles + Supertrend/RSI, Excel export
-- [ ] Entry/exit trigger rules — still being defined
-- [ ] Strike selection + expiry logic
-- [ ] Order execution (multi-leg spread)
-- [ ] Margin/risk checks
-- [ ] Logging & alerts
-- [ ] Deployment (VPS/cloud, market-hours uptime)
+See `AGENTS.md` for the full, current status and strategy specification —
+kept up to date there rather than duplicated here.
+

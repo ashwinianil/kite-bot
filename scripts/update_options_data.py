@@ -1,8 +1,7 @@
 """
-Collects hourly snapshots of put option prices (+ computed IV/delta) for
-the current month's expiry, for strikes within ~15% below spot — the zone
-this strategy's short strike (~15-20 delta) and hedge strike (200pts further
-OTM) will always fall in.
+Collects hourly snapshots of option prices (+ computed IV/delta) for BOTH
+puts and calls, for the current month's expiry, within ~15% of spot on
+each side (puts below spot, calls above spot — the OTM zone on each side).
 
 Why this exists: we can't get historical option prices retroactively, so
 this collects them PROSPECTIVELY, hour by hour, specifically so that in a
@@ -12,7 +11,7 @@ forward from "right now" using live quotes.
 
 Safe to re-run repeatedly (e.g. every hour, alongside update_data.py) —
 appends one row per strike per run, never duplicates (dedupes by
-(date, strike)).
+(date, strike, option_type)).
 
 Run:
     python scripts/update_options_data.py
@@ -41,10 +40,10 @@ UNDERLYINGS = {
     "NIFTY_BANK": "BANKNIFTY",
 }
 
-STRIKE_WINDOW_PCT = 0.15  # strikes from spot down to spot*(1 - 0.15)
+STRIKE_WINDOW_PCT = 0.15  # window on each side of spot
 FORCE_CLOSE_DAYS_BEFORE_EXPIRY = 1  # matches strategy/paper_trading.py
 
-CSV_FIELDS = ["date", "strike", "ltp", "implied_vol", "delta"]
+CSV_FIELDS = ["date", "option_type", "strike", "ltp", "implied_vol", "delta"]
 
 
 def get_latest_spot(index_csv_symbol: str):
@@ -64,7 +63,7 @@ def get_option_instruments(kite, options_name: str):
 
 
 def get_existing_snapshot_keys(path: Path):
-    """Returns the set of (date_str, strike) pairs already recorded, to avoid duplicate rows."""
+    """Returns the set of (date_str, option_type, strike) already recorded, to avoid duplicate rows."""
     if not path.exists():
         return set()
     try:
@@ -73,7 +72,7 @@ def get_existing_snapshot_keys(path: Path):
         return set()
     if existing.empty:
         return set()
-    return set(zip(existing["date"].astype(str), existing["strike"]))
+    return set(zip(existing["date"].astype(str), existing["option_type"], existing["strike"]))
 
 
 def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
@@ -99,15 +98,20 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
 
     dte = days_to_expiry(expiry, today)
 
-    low_bound = spot * (1 - STRIKE_WINDOW_PCT)
-    puts = [
+    # Puts: strikes below spot (OTM puts). Calls: strikes above spot (OTM calls).
+    put_low = spot * (1 - STRIKE_WINDOW_PCT)
+    call_high = spot * (1 + STRIKE_WINDOW_PCT)
+
+    candidates = [
         inst for inst in option_instruments
-        if inst.get("instrument_type") == "PE"
-        and inst.get("expiry") == expiry
-        and low_bound <= inst.get("strike", 0) < spot
+        if inst.get("expiry") == expiry
+        and (
+            (inst.get("instrument_type") == "PE" and put_low <= inst.get("strike", 0) < spot)
+            or (inst.get("instrument_type") == "CE" and spot < inst.get("strike", 0) <= call_high)
+        )
     ]
-    if not puts:
-        print(f"  No put strikes found in window (spot={spot}, expiry={expiry}).")
+    if not candidates:
+        print(f"  No candidate strikes found in window (spot={spot}, expiry={expiry}).")
         return
 
     csv_path = OPTIONS_CSV_DIR / f"{index_csv_symbol}_{expiry.isoformat()}.csv"
@@ -115,7 +119,7 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
 
     now_str = datetime.now().replace(microsecond=0).isoformat()
 
-    keys = [f"{inst['exchange']}:{inst['tradingsymbol']}" for inst in puts]
+    keys = [f"{inst['exchange']}:{inst['tradingsymbol']}" for inst in candidates]
     try:
         quotes = kite.quote(keys)
     except Exception as e:
@@ -123,28 +127,31 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
         return
 
     rows = []
-    for inst in puts:
+    for inst in candidates:
         key = f"{inst['exchange']}:{inst['tradingsymbol']}"
         quote = quotes.get(key)
         if not quote or quote.get("last_price", 0) <= 0:
             continue
 
         strike = inst["strike"]
-        if (now_str, strike) in already_recorded:
+        option_type = "put" if inst["instrument_type"] == "PE" else "call"
+
+        if (now_str, option_type, strike) in already_recorded:
             continue  # already have this exact snapshot (re-running within same run window)
 
         ltp = quote["last_price"]
         iv = None
         delta_val = None
         try:
-            iv = implied_volatility(ltp, spot, strike, dte, "put")
+            iv = implied_volatility(ltp, spot, strike, dte, option_type)
             if iv is not None:
-                delta_val = delta_fn(spot, strike, dte, iv, "put")
+                delta_val = delta_fn(spot, strike, dte, iv, option_type)
         except Exception:
             pass  # leave iv/delta as None if calculation fails for this strike
 
         rows.append({
             "date": now_str,
+            "option_type": option_type,
             "strike": strike,
             "ltp": ltp,
             "implied_vol": iv,
@@ -160,8 +167,10 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
     new_df = pd.DataFrame(rows)
     new_df.to_csv(csv_path, mode="a", header=not file_exists, index=False)
 
-    print(f"  Saved {len(rows)} strike snapshot(s) to {csv_path.relative_to(PROJECT_ROOT)} "
-          f"(expiry {expiry}, {dte} days out, spot {spot:.2f})")
+    n_puts = sum(1 for r in rows if r["option_type"] == "put")
+    n_calls = sum(1 for r in rows if r["option_type"] == "call")
+    print(f"  Saved {len(rows)} snapshot(s) ({n_puts} puts, {n_calls} calls) to "
+          f"{csv_path.relative_to(PROJECT_ROOT)} (expiry {expiry}, {dte} days out, spot {spot:.2f})")
 
 
 def main():
