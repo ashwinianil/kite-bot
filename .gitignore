@@ -17,6 +17,12 @@ data/csv/*.csv
 data/csv/archived/*.csv
 data/excel/**/*.xlsx
 
+# NOTE: data/options_csv/ is intentionally NOT gitignored, unlike the data
+# above. Options price history is collected prospectively and is
+# IRREPLACEABLE — Kite's historical API can't retroactively give us past
+# option prices, unlike index/stock candles. Committing it gives free
+# backup/history for data that can't be regenerated if lost.
+
 # Generated instrument token cache — regenerate via get_instrument_tokens.py
 config/instrument_tokens.csv
 

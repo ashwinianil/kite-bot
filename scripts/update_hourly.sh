@@ -22,12 +22,16 @@ else
     exit 1
 fi
 
-echo "=== Step 1/2: Updating hourly candle data + indicators ==="
+echo "=== Step 1/3: Updating hourly candle data + indicators ==="
 python scripts/update_data.py
 
 echo ""
-echo "=== Step 2/2: Refreshing Excel reference workbooks ==="
+echo "=== Step 2/3: Collecting options price snapshots (Nifty + BankNifty puts) ==="
+python scripts/update_options_data.py
+
+echo ""
+echo "=== Step 3/3: Refreshing Excel reference workbooks ==="
 python scripts/export_to_excel.py
 
 echo ""
-echo "Done. Data and Excel workbooks are up to date."
+echo "Done. Data, options snapshots, and Excel workbooks are all up to date."

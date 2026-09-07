@@ -82,7 +82,17 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
    Safe to re-run anytime — only appends genuinely new candles, never
    duplicates. Data is saved to `data/csv/` (one file per symbol) — this is
    the source of truth for strategy code.
-9. Generate Excel workbooks for human viewing (not the data source itself):
+9. Collect options price snapshots for Nifty + BankNifty puts (current
+   month expiry, strikes within ~15% below spot):
+   ```
+   python scripts/update_options_data.py
+   ```
+   Collected prospectively (hour by hour) since historical option prices
+   can't be fetched retroactively — this builds up real historical option
+   data over time for future backtesting. Saved to `data/options_csv/`,
+   split by underlying + expiry. **Committed to git** (unlike other data/
+   files) since it's irreplaceable if lost.
+10. Generate Excel workbooks for human viewing (not the data source itself):
    ```
    python scripts/export_to_excel.py
    ```
