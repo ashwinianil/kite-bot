@@ -27,7 +27,16 @@ python scripts/update_data.py
 
 echo ""
 echo "=== Step 2/4: Checking Nifty paper trading signal (entry/exit) ==="
+# Paper trading and options data collection are independent concerns — a
+# failure here (e.g. a live Kite API hiccup) must NOT prevent options data
+# collection (step 3) from running. set -e is disabled just for this one
+# line so an error here is logged but doesn't kill the rest of the script.
+set +e
 python scripts/paper_trade.py
+if [ $? -ne 0 ]; then
+    echo "WARNING: paper_trade.py step failed — continuing with remaining steps anyway."
+fi
+set -e
 
 echo ""
 echo "=== Step 3/4: Collecting options price snapshots (Nifty + BankNifty puts) ==="

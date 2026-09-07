@@ -74,8 +74,19 @@ def _get_option_instruments(kite, options_name: str):
     Fetches all NFO option instruments for this underlying (e.g. "NIFTY" —
     the `name` field Kite uses for the underlying in its F&O instrument
     dump, NOT the index tradingsymbol "NIFTY 50").
+
+    Returns [] on any Kite API failure (network blip, rate limit, momentary
+    outage) rather than raising — callers already handle an empty result
+    gracefully, and this MUST NOT crash the whole hourly pipeline (paper
+    trading is one of several independent steps in update_hourly.sh; a
+    live-quote hiccup here shouldn't block options data collection from
+    running afterward).
     """
-    all_nfo = kite.instruments("NFO")
+    try:
+        all_nfo = kite.instruments("NFO")
+    except Exception as e:
+        print(f"  WARNING: kite.instruments('NFO') failed: {e}")
+        return []
     return [inst for inst in all_nfo if inst.get("name") == options_name]
 
 
@@ -94,11 +105,18 @@ def _fetch_quotes(kite, instruments: list):
     """
     Fetches live LTPs for a list of instrument dicts (each needs
     'exchange' and 'tradingsymbol'). Returns {instrument_token: ltp}.
+
+    Returns {} on any Kite API failure rather than raising — same
+    reasoning as _get_option_instruments above.
     """
     if not instruments:
         return {}
     keys = [f"{inst['exchange']}:{inst['tradingsymbol']}" for inst in instruments]
-    quotes = kite.quote(keys)
+    try:
+        quotes = kite.quote(keys)
+    except Exception as e:
+        print(f"  WARNING: kite.quote() failed: {e}")
+        return {}
 
     result = {}
     for inst in instruments:
