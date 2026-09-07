@@ -12,10 +12,13 @@ Run:
     python scripts/cleanup_removed_constituents.py
 """
 
+import sys
 import csv
 import shutil
-from datetime import date
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config.ist_time import today_ist
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TOKENS_FILE = PROJECT_ROOT / "config" / "instrument_tokens.csv"
@@ -52,7 +55,7 @@ def main():
         return
 
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    today_str = date.today().isoformat()
+    today_str = today_ist().isoformat()
 
     print(f"Archiving {len(to_archive)} file(s) for symbols no longer in the Nifty 50:")
     for f in to_archive:

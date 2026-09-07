@@ -103,6 +103,22 @@ against known reference values, put-call parity, and round-trip IV recovery.
   historical option price data to backtest against, rather than only being
   able to forward-simulate from "now".
 
+## Timestamps: always IST, never local system time
+
+The dev machine's system timezone is NOT IST (e.g. it's been Singapore
+time, UTC+8, 2.5hrs ahead of IST) — but NSE and everything in this project
+operates in IST. Every place that captures "now" or "today" MUST use
+`config/ist_time.py` (`now_ist()`, `now_ist_naive()`, `today_ist()`) —
+never bare `datetime.now()` / `date.today()` in Python, never bare `date`
+in bash (use `TZ='Asia/Kolkata' date` instead, as in
+`scripts/scheduled_update.sh`). This applies to EVERYTHING: historical
+data query windows, expiry day-count math, log timestamps, options
+snapshot timestamps, archive filenames — no exceptions. Getting this wrong
+silently shifts day-boundary calculations, which is worst exactly when
+it's hardest to notice (near midnight IST). This was a real bug caught
+and fixed once already (2026-09-07) — stay vigilant for it creeping back
+in on any new script.
+
 ## Automated scheduling
 
 - `scripts/market_hours.py` checks NSE market hours (9:15am-3:30pm IST,

@@ -26,6 +26,7 @@ import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config.kite_client import get_kite
+from config.ist_time import now_ist_naive, today_ist
 from strategy.options_pricing import implied_volatility, delta as delta_fn
 from strategy.options_chain import pick_current_expiry, days_to_expiry
 
@@ -83,7 +84,7 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
         print(f"  No index data found for {index_csv_symbol} — run update_data.py first.")
         return
 
-    today = date.today()
+    today = today_ist()
 
     option_instruments = get_option_instruments(kite, options_name)
     if not option_instruments:
@@ -117,7 +118,7 @@ def collect_for_underlying(kite, index_csv_symbol: str, options_name: str):
     csv_path = OPTIONS_CSV_DIR / f"{index_csv_symbol}_{expiry.isoformat()}.csv"
     already_recorded = get_existing_snapshot_keys(csv_path)
 
-    now_str = datetime.now().replace(microsecond=0).isoformat()
+    now_str = now_ist_naive().replace(microsecond=0).isoformat()
 
     keys = [f"{inst['exchange']}:{inst['tradingsymbol']}" for inst in candidates]
     try:

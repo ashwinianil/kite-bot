@@ -13,10 +13,13 @@ closed — the scripts will simply find no new data and no-op harmlessly,
 so this is a low-cost gap, not a dangerous one.
 """
 
+import sys
+from pathlib import Path
 from datetime import datetime, time
-from zoneinfo import ZoneInfo
 
-IST = ZoneInfo("Asia/Kolkata")
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config.ist_time import IST, now_ist
+
 MARKET_OPEN = time(9, 15)
 MARKET_CLOSE = time(15, 30)
 
@@ -27,7 +30,7 @@ def is_market_hours(now: datetime = None) -> bool:
     testing). If it has no timezone info, it's assumed to already be IST.
     """
     if now is None:
-        now = datetime.now(IST)
+        now = now_ist()
     elif now.tzinfo is None:
         now = now.replace(tzinfo=IST)
     else:
@@ -41,7 +44,7 @@ def is_market_hours(now: datetime = None) -> bool:
 
 if __name__ == "__main__":
     # Quick manual check: `python scripts/market_hours.py`
-    now_ist = datetime.now(IST)
+    now = now_ist()
     status = "OPEN" if is_market_hours() else "CLOSED"
-    print(f"Current IST time: {now_ist.strftime('%Y-%m-%d %H:%M:%S %A')}")
+    print(f"Current IST time: {now.strftime('%Y-%m-%d %H:%M:%S %A')}")
     print(f"Market status: {status}")

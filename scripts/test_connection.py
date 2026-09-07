@@ -10,10 +10,11 @@ Run:
 
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config.kite_client import get_kite
+from config.ist_time import now_ist_naive
 
 
 def main():
@@ -29,7 +30,7 @@ def main():
     # NIFTY 50 index instrument token (constant, well-known)
     nifty_token = 256265
 
-    to_date = datetime.now()
+    to_date = now_ist_naive()
     from_date = to_date - timedelta(days=5)
 
     candles = kite.historical_data(

@@ -26,6 +26,7 @@ import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 from config.kite_client import get_kite
+from config.ist_time import now_ist_naive
 from strategy.indicators import add_indicators
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -79,7 +80,7 @@ def fetch_and_update(kite, symbol: str, instrument_token: int):
     path = csv_path_for(symbol)
     last_ts = get_last_timestamp(path)
 
-    to_date = datetime.now()
+    to_date = now_ist_naive()
     if last_ts is not None:
         # Start just after the last candle we already have
         from_date = last_ts + timedelta(minutes=1)
