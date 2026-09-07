@@ -22,16 +22,20 @@ else
     exit 1
 fi
 
-echo "=== Step 1/3: Updating hourly candle data + indicators ==="
+echo "=== Step 1/4: Updating hourly candle data + indicators ==="
 python scripts/update_data.py
 
 echo ""
-echo "=== Step 2/3: Collecting options price snapshots (Nifty + BankNifty puts) ==="
+echo "=== Step 2/4: Checking Nifty paper trading signal (entry/exit) ==="
+python scripts/paper_trade.py
+
+echo ""
+echo "=== Step 3/4: Collecting options price snapshots (Nifty + BankNifty puts) ==="
 python scripts/update_options_data.py
 
 echo ""
-echo "=== Step 3/3: Refreshing Excel reference workbooks ==="
+echo "=== Step 4/4: Refreshing Excel reference workbooks ==="
 python scripts/export_to_excel.py
 
 echo ""
-echo "Done. Data, options snapshots, and Excel workbooks are all up to date."
+echo "Done. Data, paper trading check, options snapshots, and Excel workbooks are all up to date."

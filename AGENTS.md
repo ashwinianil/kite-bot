@@ -152,9 +152,20 @@ in on any new script.
 - [x] Options price data collection (puts + calls, hourly, prospective)
 - [x] Automated scheduling (macOS launchd) — daily login still manual,
       Mac must be awake/online during market hours
-- [ ] Paper trading engine (state persistence + live quote-based simulated
-      entries/exits + trade log) — partially designed, not yet complete
-- [ ] Review paper trading results with the user
+- [x] Paper trading engine for Nifty (state persistence + live quote-based
+      simulated entries/exits + trade log) — scoped to Nifty only for now,
+      per user's request to validate one underlying before generalizing to
+      BankNifty. Wired into update_hourly.sh (runs every scheduled cycle).
+      `strategy/paper_trading.py` (logic) + `scripts/paper_trade.py`
+      (runner). Tested: state persistence, expiry force-close, stop-loss
+      math, signal engine integration. NOT tested: actual live Kite quote
+      fetching / option instrument lookup (no Kite access in dev sandbox)
+      — user needs to run it live and report back if anything's off there.
+- [ ] Review paper trading results with the user (need some real trading
+      days to pass first, then look at data/paper_trades.csv together)
+- [ ] Generalize paper trading to BankNifty too (straightforward — same
+      logic, just needs looping over both underlyings instead of hardcoding
+      Nifty in scripts/paper_trade.py)
 - [ ] Live order execution — DO NOT BUILD until paper trading is validated
       and the user explicitly asks to go live
 - [ ] Cloud VPS deployment (for true always-on reliability, beyond what a

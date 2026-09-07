@@ -26,5 +26,15 @@ data/excel/**/*.xlsx
 # Generated instrument token cache — regenerate via get_instrument_tokens.py
 config/instrument_tokens.csv
 
+# Paper trading position state — transient runtime state (what's currently
+# open right now), not history. Regenerable in the sense that losing it
+# just means the bot treats itself as flat on next run — not ideal, but
+# not catastrophic like losing trade history would be. Gitignored.
+data/paper_positions.json
+
+# Paper trading TRADE LOG (closed trades) is intentionally NOT gitignored —
+# like data/options_csv/, this is irreplaceable track record, not
+# regenerable data. Committing it preserves history.
+
 # OS
 .DS_Store
