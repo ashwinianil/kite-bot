@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kitebot.optionsdata</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>REPLACE_WITH_FULL_PATH_TO_REPO/scripts/scheduled_options_data.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>900</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_optionsdata_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_optionsdata_stderr.log</string>
+</dict>
+</plist>

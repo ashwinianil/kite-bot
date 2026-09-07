@@ -1,9 +1,13 @@
 #!/bin/bash
-# Run this to update hourly candle data + Supertrend/RSI for all Nifty 50
-# instruments, and refresh the Excel reference workbooks.
+# MANUAL convenience script — runs everything in sequence once, for when
+# you want to trigger a full update by hand.
 #
-# Safe to run repeatedly (e.g. every hour during market hours 9:15am-3:30pm
-# IST) — never creates duplicate data.
+# For AUTOMATED/scheduled running, this is NOT what gets used — see
+# scripts/scheduled_market_data.sh, scheduled_options_data.sh, and
+# scheduled_paper_trade.sh instead, which run as three fully independent
+# processes (so a failure in one, e.g. paper trading hitting a live Kite
+# API hiccup, can never affect the others — see README's "Automated
+# scheduling" section for why this separation matters).
 #
 # Requires: a valid access token for today (run scripts/login.py first if
 # you haven't logged in yet today — tokens expire daily).
@@ -11,9 +15,10 @@
 # Usage:
 #   ./scripts/update_hourly.sh
 
-set -e  # stop immediately if any step fails
+set -e  # stop immediately if any step fails — fine for a manual run where
+        # you're watching the output and want to know right away
 
-cd "$(dirname "$0")/.."  # move to project root regardless of where this is run from
+cd "$(dirname "$0")/.."
 
 if [ -d "venv" ]; then
     source venv/bin/activate
@@ -27,16 +32,7 @@ python scripts/update_data.py
 
 echo ""
 echo "=== Step 2/4: Checking Nifty paper trading signal (entry/exit) ==="
-# Paper trading and options data collection are independent concerns — a
-# failure here (e.g. a live Kite API hiccup) must NOT prevent options data
-# collection (step 3) from running. set -e is disabled just for this one
-# line so an error here is logged but doesn't kill the rest of the script.
-set +e
 python scripts/paper_trade.py
-if [ $? -ne 0 ]; then
-    echo "WARNING: paper_trade.py step failed — continuing with remaining steps anyway."
-fi
-set -e
 
 echo ""
 echo "=== Step 3/4: Collecting options price snapshots (Nifty + BankNifty puts) ==="

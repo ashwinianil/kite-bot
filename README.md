@@ -102,39 +102,68 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
 
 ## Automated scheduling (macOS)
 
-To run the hourly update automatically instead of by hand:
+Three **fully independent** scheduled jobs, not one combined script — a
+failure or hiccup in any one (e.g. paper trading hitting a live Kite API
+error) has zero effect on the others. This matters most for options data
+collection, since a missed snapshot can't be recovered retroactively.
 
-1. Edit `scripts/com.kitebot.hourlyupdate.plist` and replace
-   `REPLACE_WITH_FULL_PATH_TO_REPO` (appears 3 times) with the actual full
-   path to this repo on your machine (e.g. `/Users/ashwini/Downloads/repos/kite-bot`).
+| Job | Runs | Log file |
+|---|---|---|
+| `com.kitebot.marketdata` | `update_data.py` + `export_to_excel.py` | `logs/market_data.log` |
+| `com.kitebot.optionsdata` | `update_options_data.py` | `logs/options_data.log` |
+| `com.kitebot.papertrade` | `paper_trade.py` | `logs/paper_trade.log` |
 
-2. Copy it into place and load it:
+Each is gated by `scripts/run_if_market_open.sh` — a shared helper that
+checks NSE market hours **in IST** (via `scripts/market_hours.py`,
+timezone-safe regardless of what timezone your Mac itself is set to) and
+only actually runs when the market is open; outside those hours it's a
+cheap no-op.
+
+**Setup — repeat for all three plists:**
+
+1. Edit each of `scripts/com.kitebot.marketdata.plist`,
+   `scripts/com.kitebot.optionsdata.plist`, and
+   `scripts/com.kitebot.papertrade.plist`, replacing
+   `REPLACE_WITH_FULL_PATH_TO_REPO` (appears 3 times in each file) with the
+   actual full path to this repo on your machine (e.g.
+   `/Users/ashwini/Downloads/repos/kite-bot`).
+
+2. Copy all three into place and load them:
    ```
-   cp scripts/com.kitebot.hourlyupdate.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.kitebot.hourlyupdate.plist
+   cp scripts/com.kitebot.*.plist ~/Library/LaunchAgents/
+   launchctl load ~/Library/LaunchAgents/com.kitebot.marketdata.plist
+   launchctl load ~/Library/LaunchAgents/com.kitebot.optionsdata.plist
+   launchctl load ~/Library/LaunchAgents/com.kitebot.papertrade.plist
    ```
-   This runs `scripts/scheduled_update.sh` every 15 minutes. That script
-   checks NSE market hours **in IST** (via `scripts/market_hours.py`,
-   timezone-safe regardless of what timezone your Mac itself is set to)
-   and only actually updates data when the market is open — outside those
-   hours it's a cheap no-op.
+   Each runs its own script every 15 minutes, completely independently.
 
-3. To stop it: `launchctl unload ~/Library/LaunchAgents/com.kitebot.hourlyupdate.plist`
+3. To stop one (or all):
+   ```
+   launchctl unload ~/Library/LaunchAgents/com.kitebot.marketdata.plist
+   launchctl unload ~/Library/LaunchAgents/com.kitebot.optionsdata.plist
+   launchctl unload ~/Library/LaunchAgents/com.kitebot.papertrade.plist
+   ```
 
-4. Logs land in `logs/scheduled_update.log` (and `logs/launchd_stdout.log` /
-   `launchd_stderr.log` for launchd-level issues) — check these if data
-   doesn't seem to be updating.
+4. Check the log files listed in the table above if something doesn't seem
+   to be updating — each job logs independently, so you can tell exactly
+   which one (if any) is having trouble.
+
+**Want to run everything manually once instead** (e.g. for testing)?
+`./scripts/update_hourly.sh` still does that — it's kept as a convenience
+for manual runs, but is NOT what the automated scheduling above uses.
 
 **Two important limitations to know about:**
 - **Daily login is still manual.** Kite access tokens expire every day and
   require a browser-based login (password + 2FA) — this can't be automated
-  headlessly with the current setup. The scheduled job will fail every run
-  until you've run `python scripts/login.py` yourself that day.
+  headlessly with the current setup. All three scheduled jobs will fail
+  every run until you've run `python scripts/login.py` yourself that day.
 - **Your Mac must be awake and online** during market hours for this to
   work — launchd doesn't wake a sleeping Mac by default. If you close the
   lid or it sleeps, updates during that window are simply missed (though
-  harmlessly — the next successful run just picks up from where the data
-  left off). For genuine 24/7 reliability regardless of your laptop's
+  harmlessly for market data/paper trading — the next successful run just
+  picks up from where things left off; options data snapshots during that
+  window, however, are genuinely lost, since they can't be fetched
+  retroactively). For genuine 24/7 reliability regardless of your laptop's
   state, a cloud VPS is the real fix (still on the roadmap, see Status
   below) — this local setup is a reasonable way to get started now.
 

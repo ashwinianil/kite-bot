@@ -126,16 +126,29 @@ in on any new script.
   NOT the machine's local system timezone, since the user's Mac may be set
   to a different zone (e.g. Singapore, 2.5hrs ahead of IST). Tested against
   9 scenarios including the SGT->IST conversion specifically.
-- `scripts/scheduled_update.sh` runs `update_hourly.sh` only when
-  `market_hours.py` says the market is open; designed to be called
-  frequently (e.g. every 15 min) by a scheduler — cheap no-op otherwise.
-- `scripts/com.kitebot.hourlyupdate.plist` is a macOS launchd job template
-  for running `scheduled_update.sh` automatically. User needs to edit the
-  path placeholder and `launchctl load` it — see README's "Automated
-  scheduling" section.
+- `scripts/run_if_market_open.sh` is a generic, reusable market-hours-gated
+  runner: `./scripts/run_if_market_open.sh <python_script> <log_file>`.
+  Tested (both success and failure paths) before being built on.
+- THREE fully independent scheduled jobs sit on top of that shared runner —
+  NOT one combined script. This was a deliberate correction: the original
+  design chained market data + paper trading + options data collection
+  together in one script, and the user correctly pushed back that options
+  data collection (irreplaceable if a snapshot is missed) must not be able
+  to fail just because paper trading hit a live Kite API hiccup elsewhere
+  in the same script. Real process-level independence via three separate
+  launchd jobs, not just try/except patches within one script:
+  - `scripts/scheduled_market_data.sh` + `com.kitebot.marketdata.plist`
+  - `scripts/scheduled_options_data.sh` + `com.kitebot.optionsdata.plist`
+  - `scripts/scheduled_paper_trade.sh` + `com.kitebot.papertrade.plist`
+  Each logs to its own file under `logs/` — see README's "Automated
+  scheduling" section for setup steps.
+- `scripts/update_hourly.sh` still exists but is now MANUAL-USE ONLY (runs
+  everything in sequence, for testing/convenience) — it is NOT used by the
+  automated scheduling above anymore. Don't reintroduce a combined
+  automated path without a good reason; the independence was intentional.
 - KNOWN LIMITATION (told to user clearly, not hidden): daily login is
   still manual — Kite tokens expire daily and need browser-based 2FA login,
-  which isn't automated. The scheduled job will fail until
+  which isn't automated. All three scheduled jobs will fail until
   `scripts/login.py` is run that day. Also, the Mac must be awake/online
   during market hours — launchd doesn't wake a sleeping Mac. A cloud VPS
   is the real fix for full reliability, still pending (see Status below).
