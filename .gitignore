@@ -10,6 +10,7 @@ venv/
 # Logs
 logs/*.log
 logs/*.csv
+logs/*.png
 
 # Generated market data — regenerable via update_data.py / export_to_excel.py,
 # not source, and will grow large over time. Not committed to git.

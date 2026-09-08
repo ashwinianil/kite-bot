@@ -100,6 +100,68 @@ today (`python scripts/login.py` first if you haven't logged in yet today).
    with one sheet per symbol.
 </details>
 
+## Automated daily login (for unattended/remote setups, e.g. a VPS)
+
+`scripts/login.py` needs a browser open on the same machine — fine on your
+Mac, not possible on a headless remote server. `scripts/headless_login.py`
+automates the whole flow instead: a headless browser fills in your
+credentials + computes the current TOTP code itself (same algorithm your
+phone's authenticator uses), captures the redirect, and saves the access
+token — no human needed.
+
+**Only set this up if you're deploying somewhere you can't open a browser**
+(e.g. a VPS). If you're running everything on your own Mac, skip this
+entirely and keep using `scripts/login.py` by hand each morning.
+
+**Setup:**
+
+1. Install Playwright's browser binary (one-time, needed on whatever
+   machine runs this):
+   ```
+   playwright install chromium
+   ```
+   On a fresh Linux VPS, you may also need system libraries:
+   ```
+   playwright install-deps chromium
+   ```
+
+2. Fill in the extra `.env` fields (see `.env.example` for details on each):
+   `KITE_USER_ID`, `KITE_PASSWORD`, `KITE_TOTP_SECRET` — that last one is
+   the **permanent secret key**, not the 6-digit code that rotates every
+   30 seconds. It's shown once during 2FA setup, or you can reset 2FA in
+   Kite Console (Account > Security > 2FA) to get a fresh one.
+
+3. **Security note, seriously:** these three fields are meaningfully more
+   sensitive than the API key/secret alone — anyone with this `.env` file
+   could fully log into your trading account. Only do this on a machine
+   you fully control, with SSH-key-only access (no password login), and
+   treat the file accordingly.
+
+4. Test it first with the browser visible, so you can actually watch what
+   happens and catch anything that doesn't match (the automation's
+   selectors are based on Kite's commonly documented login flow, but
+   weren't verified against the live site — Kite may have changed things):
+   ```
+   python scripts/headless_login.py --visible
+   ```
+   If a step fails, it saves a screenshot to `logs/headless_login_failure.png`
+   showing exactly what the page looked like at that point — useful for
+   figuring out what selector needs adjusting.
+
+5. Once it works reliably, run it for real (headless, as it'll run via the
+   scheduler):
+   ```
+   python scripts/headless_login.py
+   ```
+
+**Automated scheduling for this** runs during a pre-market window
+(8:30–9:10am IST) rather than a fixed clock time — see
+`scripts/market_hours.py`'s `is_premarket_login_window()` and the
+`com.kitebot.dailylogin` job in the next section. It also skips re-running
+the browser automation if a working token already exists (e.g. an earlier
+attempt that morning already succeeded), so it won't hammer Zerodha's
+login page repeatedly within the window.
+
 ## Automated scheduling (macOS)
 
 Three **fully independent** scheduled jobs, not one combined script — a
@@ -109,6 +171,7 @@ collection, since a missed snapshot can't be recovered retroactively.
 
 | Job | Runs | Log file |
 |---|---|---|
+| `com.kitebot.dailylogin` | `headless_login.py` (pre-market window only, optional — see above) | `logs/daily_login.log` |
 | `com.kitebot.marketdata` | `update_data.py` + `export_to_excel.py` | `logs/market_data.log` |
 | `com.kitebot.optionsdata` | `update_options_data.py` | `logs/options_data.log` |
 | `com.kitebot.papertrade` | `paper_trade.py` | `logs/paper_trade.log` |
@@ -121,27 +184,31 @@ cheap no-op.
 
 **Setup — repeat for all three plists:**
 
-1. Edit each of `scripts/com.kitebot.marketdata.plist`,
-   `scripts/com.kitebot.optionsdata.plist`, and
-   `scripts/com.kitebot.papertrade.plist`, replacing
+1. Edit each plist file, replacing
    `REPLACE_WITH_FULL_PATH_TO_REPO` (appears 3 times in each file) with the
    actual full path to this repo on your machine (e.g.
-   `/Users/ashwini/Downloads/repos/kite-bot`).
+   `/Users/ashwini/Downloads/repos/kite-bot`). Skip `com.kitebot.dailylogin.plist`
+   if you're not using headless login (see previous section) — only load
+   that one if you've set it up.
 
-2. Copy all three into place and load them:
+2. Copy them into place and load them:
    ```
    cp scripts/com.kitebot.*.plist ~/Library/LaunchAgents/
    launchctl load ~/Library/LaunchAgents/com.kitebot.marketdata.plist
    launchctl load ~/Library/LaunchAgents/com.kitebot.optionsdata.plist
    launchctl load ~/Library/LaunchAgents/com.kitebot.papertrade.plist
+   launchctl load ~/Library/LaunchAgents/com.kitebot.dailylogin.plist   # only if using headless login
    ```
-   Each runs its own script every 15 minutes, completely independently.
+   Each runs its own script independently — market data and options data
+   every 15 minutes, paper trade checks every 15 minutes, daily login every
+   5 minutes but only within its pre-market window.
 
 3. To stop one (or all):
    ```
    launchctl unload ~/Library/LaunchAgents/com.kitebot.marketdata.plist
    launchctl unload ~/Library/LaunchAgents/com.kitebot.optionsdata.plist
    launchctl unload ~/Library/LaunchAgents/com.kitebot.papertrade.plist
+   launchctl unload ~/Library/LaunchAgents/com.kitebot.dailylogin.plist
    ```
 
 4. Check the log files listed in the table above if something doesn't seem
@@ -153,10 +220,13 @@ cheap no-op.
 for manual runs, but is NOT what the automated scheduling above uses.
 
 **Two important limitations to know about:**
-- **Daily login is still manual.** Kite access tokens expire every day and
-  require a browser-based login (password + 2FA) — this can't be automated
-  headlessly with the current setup. All three scheduled jobs will fail
-  every run until you've run `python scripts/login.py` yourself that day.
+- **Daily login is manual by default**, unless you've set up
+  `scripts/headless_login.py` + the `com.kitebot.dailylogin` job (see the
+  "Automated daily login" section above) — that makes it fully automated,
+  but requires storing your Zerodha password + TOTP secret, a real security
+  tradeoff you should weigh deliberately, not something to set up casually.
+  Without it, all scheduled jobs will fail every run until you've run
+  `python scripts/login.py` yourself that day.
 - **Your Mac must be awake and online** during market hours for this to
   work — launchd doesn't wake a sleeping Mac by default. If you close the
   lid or it sleeps, updates during that window are simply missed (though

@@ -5,3 +5,5 @@ pandas-ta-classic
 openpyxl
 requests
 scipy
+playwright
+pyotp

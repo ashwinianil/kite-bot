@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kitebot.dailylogin</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>REPLACE_WITH_FULL_PATH_TO_REPO/scripts/scheduled_headless_login.sh</string>
+    </array>
+
+    <!-- Runs every 5 min (300s) rather than 15, since the pre-market window
+         is short (40 min) and we want a couple of retry chances within it
+         in case the first attempt hits a transient failure. -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_dailylogin_stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>REPLACE_WITH_FULL_PATH_TO_REPO/logs/launchd_dailylogin_stderr.log</string>
+</dict>
+</plist>

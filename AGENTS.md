@@ -146,12 +146,36 @@ in on any new script.
   everything in sequence, for testing/convenience) — it is NOT used by the
   automated scheduling above anymore. Don't reintroduce a combined
   automated path without a good reason; the independence was intentional.
-- KNOWN LIMITATION (told to user clearly, not hidden): daily login is
-  still manual — Kite tokens expire daily and need browser-based 2FA login,
-  which isn't automated. All three scheduled jobs will fail until
-  `scripts/login.py` is run that day. Also, the Mac must be awake/online
-  during market hours — launchd doesn't wake a sleeping Mac. A cloud VPS
-  is the real fix for full reliability, still pending (see Status below).
+- Daily login CAN now be fully automated via `scripts/headless_login.py`
+  (Playwright headless browser + pyotp for TOTP generation from the
+  permanent secret — not the rotating 6-digit code, the fixed secret key
+  behind it) + the `com.kitebot.dailylogin` job, gated on a pre-market IST
+  window (`is_premarket_login_window()` in market_hours.py, 8:30-9:10am,
+  same "compute the window in Python, not launchd's local-time calendar
+  trigger" pattern as everything else timezone-related here). This is
+  OPTIONAL — only set up for unattended/remote deployments (e.g. a VPS)
+  where a browser login isn't possible; skip it entirely for local Mac use.
+  SECURITY: requires storing KITE_USER_ID/PASSWORD/TOTP_SECRET in .env —
+  meaningfully more sensitive than API key/secret alone, told to the user
+  clearly, and they explicitly confirmed they understood the tradeoff
+  before this was built.
+- CAVEAT on headless_login.py: the Playwright selectors for Kite's login
+  page were NOT verified against the live site (no browser/Kite access in
+  dev sandbox) — built on commonly documented patterns for this flow, but
+  the user needs to run `--visible` first and may need to adjust selectors.
+  Don't present this as "tested" — only the TOTP generation and URL-parsing
+  logic around it were actually verified.
+- Skips repeated login attempts if a working token already exists (checked
+  via a live kite.profile() call) — the job may run multiple times within
+  the pre-market window, and repeated fresh logins risk tripping Zerodha's
+  bot/rate-limit detection.
+- KNOWN LIMITATION if headless login isn't set up: daily login is manual —
+  Kite tokens expire daily and need browser-based 2FA login. All scheduled
+  jobs will fail until `scripts/login.py` is run that day. Also, the Mac
+  must be awake/online during market hours — launchd doesn't wake a
+  sleeping Mac. A cloud VPS is the real fix for full reliability (user is
+  actively evaluating this — see Status below), and headless_login.py was
+  built specifically to unblock that move.
 
 ## Where things stand (update as work progresses)
 
@@ -181,5 +205,8 @@ in on any new script.
       Nifty in scripts/paper_trade.py)
 - [ ] Live order execution — DO NOT BUILD until paper trading is validated
       and the user explicitly asks to go live
+- [x] Headless/automated daily login (scripts/headless_login.py) — built,
+      NOT verified against live Kite site (see caveat above), optional
 - [ ] Cloud VPS deployment (for true always-on reliability, beyond what a
-      laptop can offer) — not yet started
+      laptop can offer) — user actively evaluating providers (leaning
+      Oracle Cloud Free Tier first, Vultr Mumbai as paid fallback)

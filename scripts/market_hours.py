@@ -23,6 +23,11 @@ from config.ist_time import IST, now_ist
 MARKET_OPEN = time(9, 15)
 MARKET_CLOSE = time(15, 30)
 
+# Pre-market window for the daily automated login — before market open,
+# with enough buffer that a re-try or two still lands before 9:15.
+PREMARKET_LOGIN_START = time(8, 30)
+PREMARKET_LOGIN_END = time(9, 10)
+
 
 def is_market_hours(now: datetime = None) -> bool:
     """
@@ -40,6 +45,30 @@ def is_market_hours(now: datetime = None) -> bool:
         return False
 
     return MARKET_OPEN <= now.time() <= MARKET_CLOSE
+
+
+def is_premarket_login_window(now: datetime = None) -> bool:
+    """
+    True during the pre-market window when the automated daily login should
+    run (weekdays only). Kept as a separate window from is_market_hours()
+    rather than a calendar-time launchd trigger, because launchd's
+    StartCalendarInterval uses the MACHINE's local timezone to decide when
+    to fire — which would be wrong on a machine not set to IST, the same
+    problem this whole module exists to avoid elsewhere. Checking the
+    window in Python (IST-explicit) and running on the same frequent
+    StartInterval as the other jobs sidesteps that entirely.
+    """
+    if now is None:
+        now = now_ist()
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=IST)
+    else:
+        now = now.astimezone(IST)
+
+    if now.weekday() >= 5:
+        return False
+
+    return PREMARKET_LOGIN_START <= now.time() <= PREMARKET_LOGIN_END
 
 
 if __name__ == "__main__":
