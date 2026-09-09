@@ -234,15 +234,69 @@ for manual runs, but is NOT what the automated scheduling above uses.
   picks up from where things left off; options data snapshots during that
   window, however, are genuinely lost, since they can't be fetched
   retroactively). For genuine 24/7 reliability regardless of your laptop's
-  state, a cloud VPS is the real fix (still on the roadmap, see Status
-  below) — this local setup is a reasonable way to get started now.
+  state, a cloud VPS is the real fix — see the next section.
+
+## Running on a Linux VM / VPS (for true 24/7 reliability)
+
+A laptop that can sleep or lose power isn't ideal for something meant to
+run continuously — a cheap Linux VPS (Oracle Cloud Free Tier, Vultr, etc.)
+is the real fix. This project's scripts are already portable (plain
+bash/Python, nothing macOS-specific), so the same logic runs on Linux —
+just with `cron` instead of macOS's `launchd` for scheduling.
+
+**Before deploying here:** verify `headless_login.py` actually works
+using `--visible` mode on your Mac FIRST (see the previous section) — a
+headless VM has no display, so you can't debug `--visible` mode there.
+Only bring already-confirmed-working automation to the VM.
+
+**Setup, on a fresh VM:**
+
+1. Clone the repo:
+   ```
+   git clone https://github.com/ashwinianil/kite-bot.git
+   cd kite-bot
+   ```
+
+2. Run the one-shot setup script:
+   ```
+   chmod +x scripts/setup_linux.sh
+   ./scripts/setup_linux.sh
+   ```
+   This installs Python 3.11 (via the deadsnakes PPA if your distro's
+   default repos don't have it), creates the venv, installs all Python
+   dependencies + Playwright's Chromium browser (and its Linux system
+   libraries, via `playwright install-deps`), creates `.env` from the
+   template if missing, and installs the crontab (`scripts/crontab.txt`,
+   with the repo path substituted in automatically).
+
+   **If you already have other cron jobs on this machine**, the script
+   detects that and asks for confirmation before overwriting your
+   crontab — installing `scripts/crontab.txt` directly replaces your
+   entire crontab, not just adds to it.
+
+3. Fill in `.env` with your real credentials — same fields as
+   `.env.example` describes, including the headless-login ones
+   (`KITE_USER_ID`, `KITE_PASSWORD`, `KITE_TOTP_SECRET`) if you're using
+   automated login here.
+
+4. Test headless login once manually (no `--visible` — no display on this
+   VM):
+   ```
+   python scripts/headless_login.py
+   ```
+
+5. Once that works, cron takes over automatically. Check `crontab -l` to
+   confirm the jobs are installed, and watch the log files under `logs/`
+   (`daily_login.log`, `market_data.log`, `options_data.log`,
+   `paper_trade.log`) to confirm things are actually running.
 
 ## Project structure
 
 ```
 config/            Shared client setup, Nifty 50 constituent list, instrument tokens
 scripts/           Standalone scripts + wrapper shell scripts (refresh_constituents.sh,
-                    update_hourly.sh, scheduled_update.sh) + launchd plist
+                    update_hourly.sh) + launchd plists (macOS) + setup_linux.sh /
+                    crontab.txt (Linux VM)
 strategy/          Strategy logic: indicators, signal engine, options pricing/chain
 data/csv/          Source-of-truth hourly candle + indicator data (one CSV per symbol)
 data/csv/archived/ Data for stocks dropped from the Nifty 50 index (preserved, not deleted)

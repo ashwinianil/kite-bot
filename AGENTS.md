@@ -159,6 +159,13 @@ in on any new script.
   meaningfully more sensitive than API key/secret alone, told to the user
   clearly, and they explicitly confirmed they understood the tradeoff
   before this was built.
+- POLICY CAVEAT (told to user, not hidden): Zerodha's own developer forum
+  states manual login is required at least once daily by exchange mandate,
+  and they explicitly say they don't recommend automating this step —
+  even though it's technically straightforward and commonly done in the
+  algo trading community. User was told this plainly and chose to proceed
+  with headless login anyway. Don't remove or soften this note — it's a
+  real compliance consideration, not just a technical one.
 - CAVEAT on headless_login.py: the Playwright selectors for Kite's login
   page were NOT verified against the live site (no browser/Kite access in
   dev sandbox) — built on commonly documented patterns for this flow, but
@@ -207,6 +214,11 @@ in on any new script.
       and the user explicitly asks to go live
 - [x] Headless/automated daily login (scripts/headless_login.py) — built,
       NOT verified against live Kite site (see caveat above), optional
-- [ ] Cloud VPS deployment (for true always-on reliability, beyond what a
-      laptop can offer) — user actively evaluating providers (leaning
-      Oracle Cloud Free Tier first, Vultr Mumbai as paid fallback)
+- [x] Linux VM deployment tooling (scripts/setup_linux.sh, scripts/crontab.txt)
+      — cron equivalent of the macOS launchd jobs, same underlying portable
+      bash/Python scripts. NOT yet run against a real VM by the user —
+      logic tested where possible (path substitution, syntax, existing-
+      crontab safety check) but the actual apt/playwright installs on a
+      real Ubuntu box are unverified. User evaluating VM providers
+      (leaning Oracle Cloud Free Tier first, Vultr Mumbai as paid
+      fallback) — deployment itself not yet done.

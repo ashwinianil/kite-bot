@@ -1,0 +1,34 @@
+# Crontab template for running this bot on a Linux VM (Ubuntu/Debian etc).
+#
+# This is the Linux equivalent of the macOS launchd plists — same 4
+# independent jobs, same underlying scripts (they're portable bash/Python,
+# nothing macOS-specific about them), just triggered by cron instead.
+#
+# HOW TO INSTALL:
+#   1. Edit REPLACE_WITH_FULL_PATH_TO_REPO below (5 occurrences) to the
+#      actual path on your VM, e.g. /home/ashwini/kite-bot
+#   2. Install this crontab:  crontab scripts/crontab.txt
+#   3. Verify it's active:    crontab -l
+#
+# Each line's schedule ("*/5 * * * *" etc) just means "check every 5/15
+# minutes" — the actual gating on market hours / pre-market window happens
+# INSIDE the scripts themselves (market_hours.py, IST-explicit), not here.
+# So these run frequently but no-op harmlessly outside their actual window,
+# same as the macOS launchd version.
+#
+# Logs go to the same logs/ files as the launchd version
+# (logs/daily_login.log, logs/market_data.log, etc) — plus cron's own
+# stdout/stderr redirected to logs/cron_stderr.log for anything that goes
+# wrong before the script's own logging even kicks in (e.g. venv missing).
+
+# Daily login (pre-market window, checks every 5 min, self-gates on 8:30-9:10am IST)
+*/5 * * * * cd REPLACE_WITH_FULL_PATH_TO_REPO && ./scripts/scheduled_headless_login.sh >> logs/cron_stderr.log 2>&1
+
+# Market data (candles + Excel export, checks every 15 min, self-gates on market hours)
+*/15 * * * * cd REPLACE_WITH_FULL_PATH_TO_REPO && ./scripts/scheduled_market_data.sh >> logs/cron_stderr.log 2>&1
+
+# Options data collection (checks every 15 min, self-gates on market hours)
+*/15 * * * * cd REPLACE_WITH_FULL_PATH_TO_REPO && ./scripts/scheduled_options_data.sh >> logs/cron_stderr.log 2>&1
+
+# Paper trading signal check (checks every 15 min, self-gates on market hours)
+*/15 * * * * cd REPLACE_WITH_FULL_PATH_TO_REPO && ./scripts/scheduled_paper_trade.sh >> logs/cron_stderr.log 2>&1
